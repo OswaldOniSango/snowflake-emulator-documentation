@@ -20,11 +20,15 @@
           "en": "Requirement: Docker with Linux containers. Published images support AMD64 and ARM64; macOS and Windows use Docker Desktop. Standalone binaries are not published."
         },
         {
-          "es": "Abrí http://localhost:8080. La base de datos de este primer ejemplo está en memoria y se pierde al detener el proceso. Usá el siguiente ejemplo para conservar datos y archivos del stage.",
-          "en": "Open http://localhost:8080. This first example keeps the database in memory and loses it when the process stops. Use the next example to preserve data and stage files."
+          "es": "Abrí http://localhost:8080. Este comando usa una base en memoria: tablas, usuarios y metadatos se pierden al detener el proceso. El volumen conserva archivos de stages en /data/stages, pero montar /data no hace persistente la base por sí solo.",
+          "en": "Open http://localhost:8080. This command uses an in-memory database: tables, users and metadata are lost when the process stops. The volume preserves stage files in /data/stages, but mounting /data alone does not make the database persistent."
+        },
+        {
+          "es": "Ejecutá una sola alternativa Docker a la vez. Si ya hay un contenedor usando el puerto 8080, detenelo antes de iniciar otro. Ctrl+C detiene el ejemplo en primer plano; --rm elimina el contenedor al salir y conserva el volumen.",
+          "en": "Run only one Docker alternative at a time. If another container already uses port 8080, stop it before starting a second one. Ctrl+C stops this foreground example; --rm removes the exited container and preserves the volume."
         }
       ],
-      "code": "docker run --rm --name snowflake-emulator \\\n  -p 127.0.0.1:8080:8080 \\\n  ghcr.io/oswaldonisango/snowflake-emulator:latest"
+      "code": "docker pull ghcr.io/oswaldonisango/snowflake-emulator:latest\ndocker run --rm \\\n  --name snowflake-emulator \\\n  -p 8080:8080 \\\n  -v snowflake-data:/data \\\n  ghcr.io/oswaldonisango/snowflake-emulator:latest"
     },
     {
       "id": "persistent",
@@ -34,11 +38,19 @@
       },
       "paragraphs": [
         {
+          "es": "Limitación comprobada en v0.7.0: una instalación con DB_PATH puede arrancar y luego fallar tras docker stop y un reinicio con el error Failure while replaying WAL file. Se reprodujo con un volumen nuevo. Esta configuración indica cómo seleccionar almacenamiento persistente, pero no garantiza un reinicio correcto en esta versión. Para experimentar sin ese problema, usá la alternativa en memoria.",
+          "en": "Verified v0.7.0 limitation: an installation using DB_PATH may start and then fail after docker stop and a restart with Failure while replaying WAL file. This was reproduced with a fresh volume. This configuration shows how to select persistent storage, but does not guarantee a successful restart in this version. For experiments without this problem, use the in-memory alternative."
+        },
+        {
           "es": "El volumen guarda la base y los archivos de stages. Detener o eliminar el contenedor no borra ese volumen. Eliminar el volumen sí borra los datos.",
           "en": "The volume stores the database and stage files. Stopping or removing the container does not delete the volume. Deleting the volume deletes the data."
+        },
+        {
+          "es": "docker run -d devuelve el ID del contenedor antes de que el servidor esté listo; no confirma que siga ejecutándose. Revisá docker ps -a y docker logs si /health no responde.",
+          "en": "docker run -d returns the container ID before the server is ready; it does not confirm that it remains running. Check docker ps -a and docker logs if /health does not respond."
         }
       ],
-      "code": "docker volume create snowflake-data\ndocker run -d --name snowflake-emulator-persistent \\\n  -p 127.0.0.1:8080:8080 \\\n  -v snowflake-data:/data \\\n  -e DB_PATH=/data/snowflake.db \\\n  -e STAGE_DIR=/data/stages \\\n  ghcr.io/oswaldonisango/snowflake-emulator:latest\ncurl http://localhost:8080/health"
+      "code": "docker volume create snowflake-data\ndocker run -d --name snowflake-emulator-persistent \\\n  -p 127.0.0.1:8080:8080 \\\n  -v snowflake-data:/data \\\n  -e DB_PATH=/data/snowflake.db \\\n  -e STAGE_DIR=/data/stages \\\n  ghcr.io/oswaldonisango/snowflake-emulator:latest"
     },
     {
       "id": "login",
@@ -98,6 +110,10 @@
       },
       "paragraphs": [
         {
+          "es": "La limitación WAL de v0.7.0 también afecta al reinicio de una instalación persistente durante una actualización. Conservá el volumen original y su copia de seguridad; no borres archivos WAL para forzar el arranque, porque pueden contener cambios que aún no están en la base.",
+          "en": "The v0.7.0 WAL limitation also affects restarting a persistent installation during an upgrade. Preserve the original volume and its backup; do not delete WAL files to force startup, because they may contain changes not yet stored in the database."
+        },
+        {
           "es": "Para parar Docker usá docker stop con el nombre del contenedor. Para actualizar, detené y eliminá sólo el contenedor, descargá la imagen y repetí el comando persistente con el mismo volumen. Hacé una copia de seguridad de los datos con el emulador detenido antes de actualizar.",
           "en": "To stop Docker use docker stop with the container name. To update, stop and remove only the container, pull the image and repeat the persistent command with the same volume. Back up the data while the emulator is stopped before updating."
         },
@@ -116,6 +132,14 @@
       },
       "paragraphs": [
         {
+          "es": "Si curl devuelve Failed to connect, comprobá el estado del contenedor y sus logs con los comandos siguientes. Si sigue ejecutándose y está arrancando, esperá hasta ver Starting Snowflake Emulator y volvé a consultar /health. Si aparece Exited, esperar o cambiar el puerto no resuelve el fallo del proceso.",
+          "en": "If curl reports Failed to connect, check the container state and logs using the commands below. If it is still running and starting, wait for Starting Snowflake Emulator and retry /health. If its state is Exited, waiting or changing the port does not resolve the process failure."
+        },
+        {
+          "es": "Failed to open database con Failure while replaying WAL file significa que DuckDB falló al recuperar la base persistente. No es un problema del puerto. Conservá tanto el archivo .db como el .wal y el volumen original para investigar la recuperación. El modo en memoria evita abrir esos archivos, pero no recupera sus datos.",
+          "en": "Failed to open database with Failure while replaying WAL file means DuckDB failed to recover the persistent database. This is not a port problem. Preserve both the .db and .wal files and the original volume for recovery investigation. In-memory mode avoids opening those files, but does not recover their data."
+        },
+        {
           "es": "Si el puerto 8080 está ocupado, usá -p 127.0.0.1:9090:8080 en Docker y abrí http://localhost:9090. En una compilación local usá PORT=9090. Un error CGO requiere revisar el compilador nativo; una consola ausente requiere reconstruir la interfaz y luego el binario.",
           "en": "If port 8080 is busy, use -p 127.0.0.1:9090:8080 with Docker and open http://localhost:9090. For a local build use PORT=9090. A CGO error requires checking the native compiler; a missing console requires rebuilding the frontend and then the binary."
         },
@@ -123,7 +147,8 @@
           "es": "La autenticación y los permisos son un subconjunto para estudio local. No uses el emulador como límite de seguridad de producción.",
           "en": "Authentication and permissions are a subset for local study. Do not use the emulator as a production security boundary."
         }
-      ]
+      ],
+      "code": "docker ps -a --filter name=snowflake-emulator-persistent\ndocker logs --tail 50 snowflake-emulator-persistent\ncurl http://localhost:8080/health"
     }
   ]
 }

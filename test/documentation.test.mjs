@@ -102,3 +102,19 @@ test('audit additions preserve engine boundaries and correct unsupported session
  app.route('#limits');
  assert.ok(app.document.querySelector('#unsupported-commands'));
 });
+
+test('Docker guide distinguishes the working memory example from the reproduced WAL restart failure',async()=>{
+ const app=await createApp();app.route('#install');
+ const guide=JSON.parse(readFileSync(new URL('../dist/installation.json',import.meta.url)));
+ const quick=guide.sections.find(s=>s.id==='docker');
+ assert.match(quick.code,/docker pull ghcr.io/);
+ assert.match(quick.code,/-v snowflake-data:\/data/);
+ assert.doesNotMatch(quick.code,/DB_PATH/);
+ assert.match(quick.paragraphs.map(p=>p.en).join(' '),/mounting \/data alone does not make the database persistent/);
+ assert.match(app.document.querySelector('#content').textContent,/Limitación comprobada en v0.7.0/);
+ app.window.DocLanguage.setLanguage('en');
+ const prose=app.document.querySelector('#content').textContent;
+ assert.match(prose,/Verified v0.7.0 limitation/);
+ assert.match(prose,/do not delete WAL files/);
+ assert.match(prose,/does not recover their data/);
+});
