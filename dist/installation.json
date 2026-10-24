@@ -1,0 +1,129 @@
+{
+  "title": {
+    "es": "Instalar el emulador",
+    "en": "Install the emulator"
+  },
+  "intro": {
+    "es": "Instalá un entorno local con consola web, DuckDB y el subconjunto SQL documentado. Docker incluye la consola; para compilar desde el código fuente primero hay que construirla.",
+    "en": "Install a local environment with a web console, DuckDB and the documented SQL subset. Docker includes the console; source builds must build it first."
+  },
+  "sections": [
+    {
+      "id": "docker",
+      "title": {
+        "es": "Docker: inicio rápido",
+        "en": "Docker: quick start"
+      },
+      "paragraphs": [
+        {
+          "es": "Requisito: Docker con contenedores Linux. Las imágenes publicadas admiten AMD64 y ARM64; en macOS y Windows se usa Docker Desktop. No se publican binarios independientes.",
+          "en": "Requirement: Docker with Linux containers. Published images support AMD64 and ARM64; macOS and Windows use Docker Desktop. Standalone binaries are not published."
+        },
+        {
+          "es": "Abrí http://localhost:8080. La base de datos de este primer ejemplo está en memoria y se pierde al detener el proceso. Usá el siguiente ejemplo para conservar datos y archivos del stage.",
+          "en": "Open http://localhost:8080. This first example keeps the database in memory and loses it when the process stops. Use the next example to preserve data and stage files."
+        }
+      ],
+      "code": "docker run --rm --name snowflake-emulator \\\n  -p 127.0.0.1:8080:8080 \\\n  ghcr.io/oswaldonisango/snowflake-emulator:latest"
+    },
+    {
+      "id": "persistent",
+      "title": {
+        "es": "Docker: conservar datos",
+        "en": "Docker: preserve data"
+      },
+      "paragraphs": [
+        {
+          "es": "El volumen guarda la base y los archivos de stages. Detener o eliminar el contenedor no borra ese volumen. Eliminar el volumen sí borra los datos.",
+          "en": "The volume stores the database and stage files. Stopping or removing the container does not delete the volume. Deleting the volume deletes the data."
+        }
+      ],
+      "code": "docker volume create snowflake-data\ndocker run -d --name snowflake-emulator-persistent \\\n  -p 127.0.0.1:8080:8080 \\\n  -v snowflake-data:/data \\\n  -e DB_PATH=/data/snowflake.db \\\n  -e STAGE_DIR=/data/stages \\\n  ghcr.io/oswaldonisango/snowflake-emulator:latest\ncurl http://localhost:8080/health"
+    },
+    {
+      "id": "login",
+      "title": {
+        "es": "Primer inicio de sesión",
+        "en": "First sign-in"
+      },
+      "paragraphs": [
+        {
+          "es": "En un catálogo de identidad vacío se crea ADMIN con contraseña admin y rol ACCOUNTADMIN. Un catálogo existente no se reinicia al arrancar. Son credenciales de demostración para aprendizaje local.",
+          "en": "An empty identity catalog creates ADMIN with password admin and role ACCOUNTADMIN. An existing catalog is not reset at startup. These demonstration credentials are for local learning."
+        },
+        {
+          "es": "Entrá a la consola con ADMIN/admin y creá el warehouse con el comando mostrado. Después seleccioná base TEST_DB, esquema PUBLIC y warehouse COMPUTE_WH en los controles del worksheet. El contexto se configura desde la interfaz; USE DATABASE, USE SCHEMA y USE WAREHOUSE no están implementados como SQL.",
+          "en": "Sign in to the console with ADMIN/admin and create the warehouse using the shown command. Then select database TEST_DB, schema PUBLIC and warehouse COMPUTE_WH in the worksheet controls. Context is configured through the UI; USE DATABASE, USE SCHEMA and USE WAREHOUSE are not implemented as SQL."
+        }
+      ],
+      "code": "CREATE WAREHOUSE COMPUTE_WH;"
+    },
+    {
+      "id": "first-query",
+      "title": {
+        "es": "Verificar la primera consulta",
+        "en": "Verify the first query"
+      },
+      "paragraphs": [
+        {
+          "es": "Con el contexto seleccionado, ejecutá esta consulta para verificar la sesión y la traducción SQL.",
+          "en": "After selecting the context, run this query to verify the session and SQL translation."
+        }
+      ],
+      "code": "SELECT CURRENT_USER(), CURRENT_ROLE(), IFF(1 > 0, 'yes', 'no');"
+    },
+    {
+      "id": "source",
+      "title": {
+        "es": "Compilar desde el código fuente",
+        "en": "Build from source"
+      },
+      "paragraphs": [
+        {
+          "es": "Requisitos de esta revisión: Git, Go 1.26.6 o posterior, compilador C/C++ para CGO y Node.js 24.20.0 (ver _web/.nvmrc). En macOS instalá las herramientas de línea de comandos de Xcode; en Linux usá las herramientas de compilación de tu distribución. En Windows usá WSL2 o Docker.",
+          "en": "Requirements for this revision: Git, Go 1.26.6 or later, a C/C++ compiler for CGO and Node.js 24.20.0 (see _web/.nvmrc). On macOS install Xcode Command Line Tools; on Linux use your distribution build tools. On Windows use WSL2 or Docker."
+        },
+        {
+          "es": "Ejecutá los comandos en una terminal POSIX. Construir la interfaz antes del binario incorpora la consola web. Un go build sin ese paso no produce la misma consola.",
+          "en": "Run these commands in a POSIX terminal. Building the frontend before the binary embeds the web console. A go build without that step does not produce the same console."
+        }
+      ],
+      "code": "git clone https://github.com/OswaldOniSango/snowflake-emulator.git\ncd snowflake-emulator\nnpm --prefix _web ci\nnpm --prefix _web run build\nCGO_ENABLED=1 go build -o snowflake-emulator ./cmd/server\nmkdir -p data/stages\nDB_PATH=./data/snowflake.db STAGE_DIR=./data/stages ./snowflake-emulator"
+    },
+    {
+      "id": "manage",
+      "title": {
+        "es": "Detener, actualizar y verificar",
+        "en": "Stop, update and verify"
+      },
+      "paragraphs": [
+        {
+          "es": "Para parar Docker usá docker stop con el nombre del contenedor. Para actualizar, detené y eliminá sólo el contenedor, descargá la imagen y repetí el comando persistente con el mismo volumen. Hacé una copia de seguridad de los datos con el emulador detenido antes de actualizar.",
+          "en": "To stop Docker use docker stop with the container name. To update, stop and remove only the container, pull the image and repeat the persistent command with the same volume. Back up the data while the emulator is stopped before updating."
+        },
+        {
+          "es": "latest puede cambiar. Para entornos reproducibles elegí una etiqueta publicada en GitHub Releases. Las capacidades de esta referencia corresponden a la revisión indicada, y una imagen anterior puede tener menos funciones.",
+          "en": "latest can change. For reproducible environments choose a published tag from GitHub Releases. This reference describes the indicated source revision; an older image may provide fewer features."
+        }
+      ],
+      "code": "docker logs snowflake-emulator-persistent\ndocker stop snowflake-emulator-persistent\ndocker rm snowflake-emulator-persistent\ndocker pull ghcr.io/oswaldonisango/snowflake-emulator:latest"
+    },
+    {
+      "id": "troubleshooting",
+      "title": {
+        "es": "Resolver problemas de inicio",
+        "en": "Troubleshoot startup"
+      },
+      "paragraphs": [
+        {
+          "es": "Si el puerto 8080 está ocupado, usá -p 127.0.0.1:9090:8080 en Docker y abrí http://localhost:9090. En una compilación local usá PORT=9090. Un error CGO requiere revisar el compilador nativo; una consola ausente requiere reconstruir la interfaz y luego el binario.",
+          "en": "If port 8080 is busy, use -p 127.0.0.1:9090:8080 with Docker and open http://localhost:9090. For a local build use PORT=9090. A CGO error requires checking the native compiler; a missing console requires rebuilding the frontend and then the binary."
+        },
+        {
+          "es": "La autenticación y los permisos son un subconjunto para estudio local. No uses el emulador como límite de seguridad de producción.",
+          "en": "Authentication and permissions are a subset for local study. Do not use the emulator as a production security boundary."
+        }
+      ]
+    }
+  ]
+}

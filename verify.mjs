@@ -10,7 +10,7 @@ for(const [type,count] of Object.entries({scalar:616,aggregate:88,table:89,macro
 for(const i of e){assert.ok(i.syntax&&i.target&&i.example&&i.result&&i.limitation);assert.ok(['partial','verified'].includes(i.status));}
 for(const i of n){assert.ok(i.signatures.length);for(const s of i.signatures) assert.ok(i.types.includes(s.type));}
 for(const name of ['LISTAGG','FLATTEN','TO_VARIANT','DATEADD','DATEDIFF']) assert.equal(e.find(i=>i.name===name).status,'partial');
-for(const f of ['index.html','styles.css','app.js','icon.svg','native.json','emulator.json','duckdb-functions.json','inventario-funciones.md','reference.json','en.json','i18n.js']) assert.ok(existsSync(new URL('./dist/'+f,import.meta.url)));
+for(const f of ['index.html','styles.css','app.js','icon.svg','native.json','emulator.json','duckdb-functions.json','inventario-funciones.md','reference.json','installation.json','en.json','i18n.js']) assert.ok(existsSync(new URL('./dist/'+f,import.meta.url)));
 execFileSync(process.execPath,['--check',new URL('./dist/app.js',import.meta.url).pathname]);
 execFileSync(process.execPath,['--check',new URL('./dist/i18n.js',import.meta.url).pathname]);
 console.log('PASS: conteos, firmas, 15 fichas, limitaciones, recursos y sintaxis JavaScript');

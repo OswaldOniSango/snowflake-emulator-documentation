@@ -1,6 +1,6 @@
 # Snowflake Emulator Documentation
 
-Referencia SQL en español del [Snowflake Emulator](https://github.com/OswaldOniSango/snowflake-emulator), publicada como sitio estático mediante GitHub Actions y GitHub Pages.
+Referencia SQL en español e inglés del [Snowflake Emulator](https://github.com/OswaldOniSango/snowflake-emulator), publicada como sitio estático mediante GitHub Actions y GitHub Pages.
 
 **Sitio:** https://OswaldOniSango.github.io/snowflake-emulator-documentation/
 
@@ -8,8 +8,9 @@ Referencia SQL en español del [Snowflake Emulator](https://github.com/OswaldOni
 
 - 947 nombres registrados en DuckDB 1.5.5, incluidas funciones, operadores, macros y utilidades.
 - 13 traducciones Snowflake → DuckDB y 2 funciones del contexto de sesión.
+- Guía de instalación con Docker, persistencia, compilación de la consola y primer inicio.
 - Fichas con firmas, sintaxis, ejemplos, limitaciones y evidencia.
-- 35 fichas de sintaxis y comandos: WITH, FROM VALUES, COPY INTO, DML, DDL, sesión, warehouses, identidad, scripting, streams y tareas.
+- 47 fichas de sintaxis y comandos: WITH, FROM VALUES, COPY INTO, DML, DDL, sesión, warehouses, identidad, scripting, streams y tareas.
 - UDF SQL, metodología, búsqueda global, filtros, paginación y tema claro/oscuro.
 - Selector Español / English que recuerda la preferencia sin perder la ruta ni alterar los ejemplos SQL. Los textos originales del catálogo DuckDB permanecen en inglés; el informe descargable de la auditoría está en español.
 
@@ -49,7 +50,8 @@ El sitio de GitHub Pages es **público**. No colocar datos privados, credenciale
 | `dist/app.js` | Navegación, búsqueda y renderizado de fichas |
 | `dist/en.json` | Traducciones de interfaz y contenido; no modifica SQL ni datos originales |
 | `dist/i18n.js` | Idioma persistente, texto accesible y localización sin reiniciar la página |
-| `dist/reference.json` | 35 fichas de sintaxis y comandos, con descripciones y límites bilingües |
+| `dist/reference.json` | 47 fichas de sintaxis y comandos, con descripciones y límites bilingües |
+| `dist/installation.json` | Guía bilingüe de Docker, persistencia, código fuente y primer inicio |
 | `dist/emulator.json` | 15 fichas con tratamiento propio del emulador |
 | `dist/native.json` | Catálogo DuckDB agrupado por nombre, con firmas distintas |
 | `dist/duckdb-functions.json` | 2950 filas originales del catálogo auditado |
