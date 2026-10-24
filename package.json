@@ -1,0 +1,15 @@
+{
+  "name": "snowflake-emulator-documentation",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Referencia SQL del Snowflake Emulator: DuckDB, traducciones y limitaciones",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "check": "node verify.mjs",
+    "test": "node verify.mjs",
+    "preview": "node scripts/preview.mjs"
+  }
+}
