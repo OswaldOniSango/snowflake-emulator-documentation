@@ -1,0 +1,578 @@
+{
+  "reviewed_at": "2026-10-24",
+  "source_repo": "https://github.com/OswaldOniSango/snowflake-emulator",
+  "entries": [
+    {
+      "id": "select",
+      "name": "SELECT",
+      "category": "query",
+      "description": {
+        "es": "Consulta filas y evalúa expresiones.",
+        "en": "Queries rows and evaluates expressions."
+      },
+      "syntax": "SELECT <expressions> [FROM <source>] [WHERE <condition>];",
+      "example": "SELECT IFF(1 > 0, 1, 0) AS value;",
+      "limitations": {
+        "es": "Las expresiones pasan por el traductor y luego por DuckDB. No se implementan todas las extensiones SELECT de Snowflake.",
+        "en": "Expressions pass through the translator and then DuckDB. Not all Snowflake SELECT extensions are implemented."
+      },
+      "source": "pkg/query/executor.go"
+    },
+    {
+      "id": "with",
+      "name": "WITH (CTE)",
+      "category": "query",
+      "description": {
+        "es": "Define consultas temporales con nombre, encadenadas dentro de una sentencia.",
+        "en": "Defines named temporary queries that can be chained within a statement."
+      },
+      "syntax": "WITH cte_name [(column_list)] AS (SELECT ...),\n     next_cte AS (SELECT ... FROM cte_name)\nSELECT ... FROM next_cte;",
+      "example": "WITH base AS (\n  SELECT column1 AS n FROM VALUES (1), (2)\n), doubled AS (\n  SELECT n * 2 AS n FROM base\n)\nSELECT n FROM doubled ORDER BY n;",
+      "limitations": {
+        "es": "Las pruebas cubren CTE simples y encadenadas y su uso en CTAS. El clasificador reconoce WITH seguido de SELECT. No se afirma equivalencia de CTE recursivas ni soporte de WITH con procedimientos anónimos o modelos de Snowflake.",
+        "en": "Tests cover simple and chained CTEs and their use in CTAS. The classifier recognizes WITH followed by SELECT. Recursive CTE equivalence and Snowflake WITH anonymous procedures or models are not claimed."
+      },
+      "source": "pkg/query/cte_test.go"
+    },
+    {
+      "id": "values",
+      "name": "FROM VALUES",
+      "category": "query",
+      "description": {
+        "es": "Construye una tabla literal dentro de una consulta.",
+        "en": "Builds an inline table literal within a query."
+      },
+      "syntax": "SELECT ... FROM VALUES (...), (...) [AS alias[(columns)]];",
+      "example": "SELECT column1, column2\nFROM VALUES (1, 'one'), (2, 'two');",
+      "limitations": {
+        "es": "El traductor agrega un alias y columnas column1, column2, etc. cuando faltan. Los tipos y su coerción se resuelven en DuckDB.",
+        "en": "The translator adds an alias and column1, column2, etc. when missing. Types and coercion are resolved by DuckDB."
+      },
+      "source": "pkg/query/translator.go"
+    },
+    {
+      "id": "join",
+      "name": "JOIN",
+      "category": "query",
+      "description": {
+        "es": "Combina filas de dos fuentes usando una condición.",
+        "en": "Combines rows from two sources using a condition."
+      },
+      "syntax": "SELECT ... FROM source_a [INNER|LEFT|RIGHT|FULL|CROSS] JOIN source_b [ON condition];",
+      "example": "SELECT a.id, b.label\nFROM (VALUES (1), (2)) a(id)\nLEFT JOIN (VALUES (1, 'one')) b(id, label) ON a.id = b.id;",
+      "limitations": {
+        "es": "La forma SQL estándar se delega a DuckDB tras resolver nombres. Las variantes especializadas de Snowflake no están verificadas por esta ficha.",
+        "en": "Standard SQL forms are delegated to DuckDB after name resolution. Specialized Snowflake variants are not verified by this entry."
+      },
+      "source": "pkg/query/contextual_naming.go"
+    },
+    {
+      "id": "where",
+      "name": "WHERE",
+      "category": "query",
+      "description": {
+        "es": "Filtra filas antes de la agregación.",
+        "en": "Filters rows before aggregation."
+      },
+      "syntax": "SELECT ... FROM ... WHERE predicate;",
+      "example": "SELECT column1 FROM VALUES (1), (2), (3) WHERE column1 > 1;",
+      "limitations": {
+        "es": "El predicado se evalúa con las reglas de tipos y NULL de DuckDB.",
+        "en": "Predicates use DuckDB type and NULL rules."
+      },
+      "source": "pkg/query/executor.go"
+    },
+    {
+      "id": "group-by",
+      "name": "GROUP BY / HAVING",
+      "category": "query",
+      "description": {
+        "es": "Agrupa filas y filtra grupos agregados.",
+        "en": "Groups rows and filters aggregated groups."
+      },
+      "syntax": "SELECT key, aggregate(...) FROM ... GROUP BY key [HAVING condition];",
+      "example": "SELECT column1 AS kind, COUNT(*) AS n\nFROM VALUES ('a'), ('a'), ('b')\nGROUP BY column1 HAVING COUNT(*) > 1;",
+      "limitations": {
+        "es": "Las formas básicas se ejecutan en DuckDB. No se garantiza equivalencia de todas las variantes GROUP BY de Snowflake.",
+        "en": "Basic forms run in DuckDB. Equivalence for every Snowflake GROUP BY variant is not guaranteed."
+      },
+      "source": "pkg/query/executor.go"
+    },
+    {
+      "id": "qualify",
+      "name": "QUALIFY / OVER",
+      "category": "query",
+      "description": {
+        "es": "Filtra el resultado de funciones de ventana.",
+        "en": "Filters the results of window functions."
+      },
+      "syntax": "SELECT ..., window_function() OVER (...) FROM ... QUALIFY predicate;",
+      "example": "SELECT column1, ROW_NUMBER() OVER (ORDER BY column1) AS rn\nFROM VALUES (3), (1), (2)\nQUALIFY rn <= 2;",
+      "limitations": {
+        "es": "La sintaxis se delega al motor; la compatibilidad depende de la función de ventana y del marco utilizados.",
+        "en": "Syntax is delegated to the engine; compatibility depends on the window function and frame used."
+      },
+      "source": "pkg/query/executor.go"
+    },
+    {
+      "id": "order-limit",
+      "name": "ORDER BY / LIMIT",
+      "category": "query",
+      "description": {
+        "es": "Ordena filas y limita la cantidad devuelta.",
+        "en": "Sorts rows and limits the number returned."
+      },
+      "syntax": "SELECT ... FROM ... [ORDER BY expression [ASC|DESC]] [LIMIT n [OFFSET m]];",
+      "example": "SELECT column1 FROM VALUES (3), (1), (2) ORDER BY column1 LIMIT 2;",
+      "limitations": {
+        "es": "Se documentan las formas básicas delegadas a DuckDB, sin afirmar equivalencia de todas las variantes TOP y FETCH de Snowflake.",
+        "en": "Basic DuckDB forms are documented; equivalence for all Snowflake TOP and FETCH variants is not claimed."
+      },
+      "source": "pkg/query/executor.go"
+    },
+    {
+      "id": "set-operators",
+      "name": "UNION / INTERSECT / EXCEPT",
+      "category": "query",
+      "description": {
+        "es": "Combina resultados de consultas.",
+        "en": "Combines query result sets."
+      },
+      "syntax": "query_a {UNION [ALL]|INTERSECT|EXCEPT} query_b;",
+      "example": "SELECT 1 AS n UNION ALL SELECT 2 AS n;",
+      "limitations": {
+        "es": "Tipos, precedencia y eliminación de duplicados siguen al motor. Las variantes específicas de Snowflake deben verificarse por separado.",
+        "en": "Types, precedence and duplicate elimination follow the engine. Snowflake-specific variants need separate verification."
+      },
+      "source": "pkg/query/executor.go"
+    },
+    {
+      "id": "insert",
+      "name": "INSERT",
+      "category": "dml",
+      "description": {
+        "es": "Inserta filas literales o el resultado de una consulta.",
+        "en": "Inserts literal rows or query results."
+      },
+      "syntax": "INSERT INTO table_name [(columns)] {VALUES (...)|SELECT ...};",
+      "example": "INSERT INTO users (id, name) VALUES (1, 'Alice');",
+      "limitations": {
+        "es": "La tabla debe existir. Los tipos y restricciones se aplican en DuckDB; no se implementa todo el conjunto de variantes Snowflake.",
+        "en": "The table must exist. DuckDB enforces types and constraints; the full set of Snowflake variants is not implemented."
+      },
+      "source": "pkg/query/executor.go"
+    },
+    {
+      "id": "update",
+      "name": "UPDATE",
+      "category": "dml",
+      "description": {
+        "es": "Actualiza filas de una tabla.",
+        "en": "Updates table rows."
+      },
+      "syntax": "UPDATE table_name SET column = expression [WHERE predicate];",
+      "example": "UPDATE users SET name = 'Bob' WHERE id = 1;",
+      "limitations": {
+        "es": "Usa resolución de nombres y autorización del emulador antes de ejecutar en DuckDB.",
+        "en": "Uses emulator name resolution and authorization before execution in DuckDB."
+      },
+      "source": "pkg/query/executor.go"
+    },
+    {
+      "id": "delete",
+      "name": "DELETE",
+      "category": "dml",
+      "description": {
+        "es": "Elimina filas de una tabla.",
+        "en": "Deletes table rows."
+      },
+      "syntax": "DELETE FROM table_name [WHERE predicate];",
+      "example": "DELETE FROM users WHERE id = 1;",
+      "limitations": {
+        "es": "La semántica de ejecución es la del motor. Los streams implementados sólo rastrean INSERT, no estos DELETE.",
+        "en": "Execution follows the engine. Implemented streams track INSERT only, not these DELETE operations."
+      },
+      "source": "pkg/query/stream_processor.go"
+    },
+    {
+      "id": "merge",
+      "name": "MERGE INTO",
+      "category": "dml",
+      "description": {
+        "es": "Ejecuta acciones condicionales de inserción, actualización o eliminación.",
+        "en": "Performs conditional insert, update or delete actions."
+      },
+      "syntax": "MERGE INTO target USING source ON condition\nWHEN MATCHED THEN UPDATE SET ...\nWHEN NOT MATCHED THEN INSERT (...) VALUES (...);",
+      "example": "MERGE INTO users t USING incoming s ON t.id = s.id\nWHEN MATCHED THEN UPDATE SET name = s.name\nWHEN NOT MATCHED THEN INSERT (id, name) VALUES (s.id, s.name);",
+      "limitations": {
+        "es": "Tiene procesador propio y pruebas de condiciones e INSERT/UPDATE/DELETE. El parser cubre un subconjunto; no implica equivalencia completa de MERGE.",
+        "en": "Has a dedicated processor and tests for conditions and INSERT/UPDATE/DELETE. The parser covers a subset, not full MERGE equivalence."
+      },
+      "source": "pkg/query/merge_processor_test.go"
+    },
+    {
+      "id": "copy-into",
+      "name": "COPY INTO",
+      "category": "loading",
+      "description": {
+        "es": "Carga archivos CSV o JSON desde un stage interno nombrado a una tabla existente.",
+        "en": "Loads CSV or JSON files from a named internal stage into an existing table."
+      },
+      "syntax": "COPY INTO table_name FROM @stage[/path]\nFILE_FORMAT = (TYPE = CSV | JSON ...)\n[PATTERN = 'glob'] [ON_ERROR = ABORT | CONTINUE | SKIP_FILE]\n[PURGE = TRUE];",
+      "example": "COPY INTO users\nFROM @users_stage\nFILE_FORMAT = (TYPE = CSV SKIP_HEADER = 1)\nPATTERN = '*.csv'\nON_ERROR = ABORT;",
+      "limitations": {
+        "es": "Sólo carga a tablas desde stages internos. PATTERN usa glob sobre el nombre del archivo, no regex Snowflake. No hay descarga COPY INTO @stage, stages externos, Parquet, compresión ni historial para evitar recargas. VALIDATION_MODE sólo se reconoce: no evita INSERT y no debe usarse como validación sin escritura.",
+        "en": "Only table loading from internal stages is supported. PATTERN uses a filename glob, not Snowflake regex. No COPY INTO @stage unloading, external stages, Parquet, compression or load history for deduplication. VALIDATION_MODE is only recognized: it does not prevent INSERT and must not be used as a write-free validation mode."
+      },
+      "source": "pkg/query/copy_processor.go"
+    },
+    {
+      "id": "stage",
+      "name": "CREATE / DROP STAGE / LIST",
+      "category": "loading",
+      "description": {
+        "es": "Administra stages internos nombrados e inspecciona sus archivos.",
+        "en": "Manages named internal stages and lists their files."
+      },
+      "syntax": "CREATE [OR REPLACE] STAGE stage_name;\nLIST @stage_name;\nDROP STAGE [IF EXISTS] stage_name;",
+      "example": "CREATE STAGE users_stage;\nLIST @users_stage;",
+      "limitations": {
+        "es": "Subir archivos mediante la interfaz del emulador o su API HTTP. PUT y stages externos no están implementados. LIST admite un subconjunto de rutas y glob.",
+        "en": "Upload files through the emulator UI or HTTP API. PUT and external stages are not implemented. LIST supports a subset of paths and glob patterns."
+      },
+      "source": "pkg/query/stage_processor.go"
+    },
+    {
+      "id": "create-table",
+      "name": "CREATE TABLE",
+      "category": "ddl",
+      "description": {
+        "es": "Crea tablas persistentes, temporales o transient.",
+        "en": "Creates persistent, temporary or transient tables."
+      },
+      "syntax": "CREATE [OR REPLACE] [TEMP|TEMPORARY|TRANSIENT] TABLE [IF NOT EXISTS] name (...);",
+      "example": "CREATE TABLE users (id INTEGER, name VARCHAR);",
+      "limitations": {
+        "es": "TEMP es una tabla temporal real de DuckDB. TRANSIENT se transforma en una tabla persistente normal; no reproduce retención ni recuperación de Snowflake.",
+        "en": "TEMP is a real DuckDB temporary table. TRANSIENT becomes a regular persistent table and does not reproduce Snowflake retention or recovery."
+      },
+      "source": "pkg/query/translator.go"
+    },
+    {
+      "id": "ctas",
+      "name": "CREATE TABLE AS SELECT",
+      "category": "ddl",
+      "description": {
+        "es": "Materializa una consulta, incluidos CTE y funciones traducidas.",
+        "en": "Materializes a query, including CTEs and translated functions."
+      },
+      "syntax": "CREATE [OR REPLACE] [TEMPORARY|TRANSIENT] TABLE name AS query;",
+      "example": "CREATE TEMPORARY TABLE doubled AS\nWITH base AS (SELECT column1 AS n FROM VALUES (1), (2))\nSELECT n * 2 AS n FROM base;",
+      "limitations": {
+        "es": "Las pruebas cubren CTE encadenadas con y sin paréntesis en CTAS. Las reglas de tablas temporales y transient siguen aplicando.",
+        "en": "Tests cover chained CTEs with and without parentheses in CTAS. Temporary and transient table limitations still apply."
+      },
+      "source": "pkg/query/cte_test.go"
+    },
+    {
+      "id": "alter-drop-table",
+      "name": "ALTER / DROP / TRUNCATE TABLE",
+      "category": "ddl",
+      "description": {
+        "es": "Modifica la estructura o elimina datos y tablas.",
+        "en": "Changes table structure or removes data and tables."
+      },
+      "syntax": "ALTER TABLE name ADD COLUMN column_name type;\nTRUNCATE TABLE name;\nDROP TABLE [IF EXISTS] name;",
+      "example": "ALTER TABLE users ADD COLUMN age INTEGER;",
+      "limitations": {
+        "es": "Las formas ejecutables dependen de DuckDB y de la sincronización del catálogo del emulador. No se afirma soporte para todas las variantes ALTER de Snowflake.",
+        "en": "Executable forms depend on DuckDB and emulator catalog synchronization. Not all Snowflake ALTER variants are claimed."
+      },
+      "source": "pkg/query/catalog_sync.go"
+    },
+    {
+      "id": "database-schema",
+      "name": "DATABASE / SCHEMA",
+      "category": "ddl",
+      "description": {
+        "es": "Administra los espacios de nombres lógicos del emulador.",
+        "en": "Manages the emulator logical namespaces."
+      },
+      "syntax": "CREATE DATABASE name;\nCREATE SCHEMA name;\nDROP DATABASE name;\nDROP SCHEMA name;",
+      "example": "CREATE DATABASE LEARNING_DB;\nCREATE SCHEMA LEARNING_DB.ANALYTICS;",
+      "limitations": {
+        "es": "Los nombres lógicos se resuelven a nombres físicos DuckDB. No hay clonación, shares ni el catálogo completo de Snowflake.",
+        "en": "Logical names resolve to physical DuckDB names. Cloning, shares and the complete Snowflake catalog are not implemented."
+      },
+      "source": "pkg/query/catalog_sync.go"
+    },
+    {
+      "id": "view",
+      "name": "CREATE / SHOW / DROP VIEW",
+      "category": "ddl",
+      "description": {
+        "es": "Define vistas ordinarias respaldadas por DuckDB.",
+        "en": "Defines ordinary DuckDB-backed views."
+      },
+      "syntax": "CREATE [OR REPLACE] VIEW name AS query;\nSHOW VIEWS;\nDROP VIEW [IF EXISTS] name;",
+      "example": "CREATE VIEW active_users AS SELECT * FROM users WHERE id > 0;",
+      "limitations": {
+        "es": "SHOW VIEWS devuelve un resultado básico en el contexto activo; LIKE e IN no se emulan. No hay vistas secure, materializadas ni recursivas en este subconjunto.",
+        "en": "SHOW VIEWS returns a basic result in the active context; LIKE and IN are not emulated. Secure, materialized and recursive views are outside this subset."
+      },
+      "source": "pkg/query/view_processor.go"
+    },
+    {
+      "id": "dynamic-table",
+      "name": "DYNAMIC TABLE",
+      "category": "automation",
+      "description": {
+        "es": "Materializa consultas y programa refrescos completos por tiempo.",
+        "en": "Materializes queries and schedules time-based full refreshes."
+      },
+      "syntax": "CREATE DYNAMIC TABLE name TARGET_LAG = '1 MINUTE' WAREHOUSE = wh AS query;\nALTER DYNAMIC TABLE name REFRESH;\nSHOW DYNAMIC TABLES;\nDROP DYNAMIC TABLE name;",
+      "example": "CREATE DYNAMIC TABLE user_summary\nTARGET_LAG = '1 MINUTE' WAREHOUSE = COMPUTE_WH\nAS SELECT COUNT(*) AS total FROM users;",
+      "limitations": {
+        "es": "Refresco completo best-effort con mínimo de 60 segundos. Sin refresco incremental, grafos de dependencias ni propagación DOWNSTREAM; DOWNSTREAM queda manual.",
+        "en": "Best-effort full refresh with a 60-second minimum. No incremental refresh, dependency graphs or DOWNSTREAM propagation; DOWNSTREAM remains manual."
+      },
+      "source": "pkg/query/dynamic_table_processor.go"
+    },
+    {
+      "id": "warehouse",
+      "name": "WAREHOUSE",
+      "category": "compute",
+      "description": {
+        "es": "Administra warehouses virtuales, suspensión, reanudación y admisión de consultas.",
+        "en": "Manages virtual warehouses, suspension, resumption and query admission."
+      },
+      "syntax": "CREATE WAREHOUSE name;\nALTER WAREHOUSE name RESUME;\nALTER WAREHOUSE name SUSPEND;\nSHOW WAREHOUSES;\nDROP WAREHOUSE name;",
+      "example": "CREATE WAREHOUSE COMPUTE_WH;\nALTER WAREHOUSE COMPUTE_WH RESUME;",
+      "limitations": {
+        "es": "Los tamaños controlan cupos lógicos en una cola local. Todas las consultas comparten DuckDB: un warehouse más grande no garantiza mayor velocidad.",
+        "en": "Sizes control logical admission slots in a local queue. All queries share DuckDB: a larger warehouse does not guarantee faster execution."
+      },
+      "source": "pkg/query/warehouse_processor.go"
+    },
+    {
+      "id": "use",
+      "name": "USE",
+      "category": "session",
+      "description": {
+        "es": "Selecciona el contexto de base, esquema, warehouse o rol.",
+        "en": "Selects database, schema, warehouse or role context."
+      },
+      "syntax": "USE DATABASE name;\nUSE SCHEMA name;\nUSE WAREHOUSE name;\nUSE ROLE name;",
+      "example": "USE DATABASE LEARNING_DB;\nUSE SCHEMA PUBLIC;\nUSE WAREHOUSE COMPUTE_WH;",
+      "limitations": {
+        "es": "La resolución depende de la sesión o del contexto del worksheet. Los roles y permisos deben existir; no se implementa el modelo completo de sesiones Snowflake.",
+        "en": "Resolution depends on the session or worksheet context. Roles and privileges must exist; the full Snowflake session model is not implemented."
+      },
+      "source": "pkg/query/session_context.go"
+    },
+    {
+      "id": "session-variables",
+      "name": "SET / UNSET",
+      "category": "session",
+      "description": {
+        "es": "Define variables SQL escalares referenciadas con $nombre.",
+        "en": "Defines scalar SQL variables referenced with $name."
+      },
+      "syntax": "SET name = expression;\nSELECT $name;\nUNSET name;",
+      "example": "SET threshold = 10;\nSELECT $threshold + 1;\nUNSET threshold;",
+      "limitations": {
+        "es": "Se admite asignación escalar simple. No se admiten asignaciones múltiples; hay límites de tamaño de valor. No confundir $variable de sesión con :variable procedural.",
+        "en": "Simple scalar assignment is supported. Multiple assignment is not supported; values have size limits. Session $variables differ from procedural :variables."
+      },
+      "source": "pkg/query/session_variables_test.go"
+    },
+    {
+      "id": "transactions",
+      "name": "BEGIN / COMMIT / ROLLBACK",
+      "category": "session",
+      "description": {
+        "es": "Controla transacciones SQL locales.",
+        "en": "Controls local SQL transactions."
+      },
+      "syntax": "BEGIN; -- or START TRANSACTION\nCOMMIT;\nROLLBACK;",
+      "example": "BEGIN;\nINSERT INTO users VALUES (1, 'Alice');\nCOMMIT;",
+      "limitations": {
+        "es": "La ejecución transaccional corresponde a DuckDB; no se afirma equivalencia completa de auto-commit, DDL o aislamiento de Snowflake.",
+        "en": "Transactional execution follows DuckDB; full Snowflake auto-commit, DDL and isolation equivalence is not claimed."
+      },
+      "source": "pkg/query/classifier.go"
+    },
+    {
+      "id": "show-describe",
+      "name": "SHOW / DESCRIBE / EXPLAIN",
+      "category": "query",
+      "description": {
+        "es": "Inspecciona objetos, metadatos y planes de consulta.",
+        "en": "Inspects objects, metadata and query plans."
+      },
+      "syntax": "SHOW TABLES;\nDESCRIBE TABLE name;\nEXPLAIN SELECT ...;",
+      "example": "SHOW TABLES;\nDESCRIBE TABLE users;\nEXPLAIN SELECT * FROM users;",
+      "limitations": {
+        "es": "SHOW se resuelve por familia de objeto y devuelve columnas del subconjunto local. Los filtros y ámbitos Snowflake no están implementados en todas las familias.",
+        "en": "SHOW is resolved by object family and returns local-subset columns. Snowflake filters and scopes are not implemented for every family."
+      },
+      "source": "pkg/query/executor.go"
+    },
+    {
+      "id": "users-roles",
+      "name": "USER / ROLE",
+      "category": "security",
+      "description": {
+        "es": "Administra usuarios y roles locales persistentes.",
+        "en": "Manages persistent local users and roles."
+      },
+      "syntax": "CREATE USER name ...;\nALTER USER name ...;\nDROP USER name;\nCREATE ROLE name;\nDROP ROLE name;\nSHOW USERS;\nSHOW ROLES;",
+      "example": "CREATE ROLE ANALYST;\nSHOW ROLES;",
+      "limitations": {
+        "es": "Autenticación para aprendizaje local, no un límite de seguridad de producción. Sin roles secundarios, roles de base de datos ni todas las propiedades de usuario Snowflake.",
+        "en": "Authentication is for local learning, not a production security boundary. Secondary roles, database roles and the full Snowflake user-property set are not implemented."
+      },
+      "source": "pkg/query/identity_processor.go"
+    },
+    {
+      "id": "grants",
+      "name": "GRANT / REVOKE",
+      "category": "security",
+      "description": {
+        "es": "Asigna roles y privilegios del subconjunto de autorización local.",
+        "en": "Assigns roles and privileges in the local authorization subset."
+      },
+      "syntax": "GRANT ROLE child TO ROLE parent;\nGRANT USAGE ON WAREHOUSE name TO ROLE role_name;\nREVOKE USAGE ON WAREHOUSE name FROM ROLE role_name;\nSHOW GRANTS;",
+      "example": "GRANT USAGE ON WAREHOUSE COMPUTE_WH TO ROLE ANALYST;",
+      "limitations": {
+        "es": "Incluye herencia del rol activo, USAGE/OPERATE de warehouses y privilegios básicos de namespaces y tablas. Sin future grants, políticas por fila ni transferencia de ownership completa.",
+        "en": "Includes active-role inheritance, warehouse USAGE/OPERATE and basic namespace and table privileges. Future grants, row policies and full ownership transfer are outside the subset."
+      },
+      "source": "pkg/query/identity_processor.go"
+    },
+    {
+      "id": "function",
+      "name": "CREATE / DROP FUNCTION",
+      "category": "programming",
+      "description": {
+        "es": "Define funciones escalares SQL respaldadas por macros.",
+        "en": "Defines SQL scalar functions backed by macros."
+      },
+      "syntax": "CREATE [OR REPLACE] FUNCTION name(args) RETURNS type [LANGUAGE SQL] AS $$ expression $$;\nSHOW FUNCTIONS;\nDROP FUNCTION [IF EXISTS] name(types);",
+      "example": "CREATE FUNCTION area(w FLOAT, h FLOAT) RETURNS FLOAT AS $$ w * h $$;\nSELECT area(3, 4);",
+      "limitations": {
+        "es": "Sólo una expresión SQL. Sin UDTFs ni otros lenguajes. Los tipos declarados no se imponen como una firma Snowflake. SHOW FUNCTIONS enumera UDF, no todas las funciones nativas.",
+        "en": "Only one SQL expression. No UDTFs or other languages. Declared types are not enforced as a Snowflake signature. SHOW FUNCTIONS lists UDFs, not all native functions."
+      },
+      "source": "pkg/query/function_processor.go"
+    },
+    {
+      "id": "procedure",
+      "name": "PROCEDURE / CALL",
+      "category": "programming",
+      "description": {
+        "es": "Define y ejecuta procedimientos de varias sentencias SQL.",
+        "en": "Defines and executes multi-statement SQL procedures."
+      },
+      "syntax": "CREATE [OR REPLACE] PROCEDURE name(args) RETURNS type LANGUAGE SQL AS $$ BEGIN ... END; $$;\nCALL name(args);\nSHOW PROCEDURES;\nDROP PROCEDURE name;",
+      "example": "CREATE PROCEDURE greeting() RETURNS VARCHAR LANGUAGE SQL\nAS $$ BEGIN RETURN 'hello'; END; $$;\nCALL greeting();",
+      "limitations": {
+        "es": "Procedimientos LANGUAGE SQL con derechos del llamador. Sin JavaScript/Python/Java, sobrecargas ni todo Snowflake Scripting.",
+        "en": "LANGUAGE SQL procedures use caller rights. No JavaScript/Python/Java, overloading or full Snowflake Scripting."
+      },
+      "source": "pkg/query/procedure_processor_test.go"
+    },
+    {
+      "id": "scripting",
+      "name": "DECLARE / LET / IF / CASE / RETURN",
+      "category": "programming",
+      "description": {
+        "es": "Usa variables, asignaciones y flujo condicional dentro de procedimientos.",
+        "en": "Uses variables, assignments and conditional flow inside procedures."
+      },
+      "syntax": "DECLARE variable type DEFAULT expression;\nBEGIN\n  LET other type := expression;\n  variable := expression;\n  IF (condition) THEN ... ELSE ... END IF;\n  RETURN expression;\nEND;",
+      "example": "CREATE PROCEDURE answer() RETURNS INTEGER LANGUAGE SQL\nAS $$ BEGIN LET n INTEGER := 40; RETURN n + 2; END; $$;\nCALL answer();",
+      "limitations": {
+        "es": "Se admiten CASE, IF/ELSE y EXCEPTION WHEN OTHER THEN a nivel superior. Sin loops ni ámbitos de excepción anidados. Los tipos de variables no se imponen completamente.",
+        "en": "CASE, IF/ELSE and top-level EXCEPTION WHEN OTHER THEN are supported. No loops or nested exception scopes. Variable types are not fully enforced."
+      },
+      "source": "pkg/query/procedure_scripting.go"
+    },
+    {
+      "id": "stream",
+      "name": "STREAM",
+      "category": "automation",
+      "description": {
+        "es": "Rastrea inserciones append-only para consultas y consumo.",
+        "en": "Tracks append-only inserts for queries and consumption."
+      },
+      "syntax": "CREATE [OR REPLACE] STREAM name ON TABLE source;\nSELECT * FROM name;\nSHOW STREAMS;\nDROP STREAM name;",
+      "example": "CREATE STREAM users_stream ON TABLE users;\nSELECT * FROM users_stream;",
+      "limitations": {
+        "es": "Sólo INSERT append-only. Sin tracking de UPDATE/DELETE, retención ni stale-state completo. El consumo depende del tipo de sentencia que lee el stream.",
+        "en": "INSERT-only append tracking. No UPDATE/DELETE tracking, retention or full stale-state semantics. Consumption depends on the kind of statement reading the stream."
+      },
+      "source": "pkg/query/stream_processor.go"
+    },
+    {
+      "id": "task",
+      "name": "TASK",
+      "category": "automation",
+      "description": {
+        "es": "Programa SQL o llamadas a procedimientos en intervalos simples.",
+        "en": "Schedules SQL or procedure calls at simple intervals."
+      },
+      "syntax": "CREATE TASK name WAREHOUSE = wh SCHEDULE = '1 MINUTE' AS sql;\nALTER TASK name RESUME;\nALTER TASK name SUSPEND;\nEXECUTE TASK name;\nSHOW TASKS;\nDROP TASK name;",
+      "example": "CREATE TASK refresh_users WAREHOUSE = COMPUTE_WH\nSCHEDULE = '1 MINUTE' AS INSERT INTO users VALUES (1, 'Alice');\nALTER TASK refresh_users RESUME;",
+      "limitations": {
+        "es": "Intervalos de segundos, minutos y horas. Sin USING CRON, grafos ni dependencias entre tareas. Ejecución local best-effort.",
+        "en": "Second, minute and hour intervals. No USING CRON, task graphs or task dependencies. Execution is local and best-effort."
+      },
+      "source": "pkg/query/task_processor.go"
+    },
+    {
+      "id": "number",
+      "name": "NUMBER / NUMERIC / DECIMAL",
+      "category": "types",
+      "description": {
+        "es": "Adapta declaraciones numéricas en columnas CREATE TABLE.",
+        "en": "Adapts numeric declarations in CREATE TABLE columns."
+      },
+      "syntax": "NUMBER[(precision[,scale])]",
+      "example": "CREATE TABLE amounts (value NUMBER(12, 2));",
+      "limitations": {
+        "es": "NUMBER se convierte a DECIMAL(38,0); NUMBER(p) a DECIMAL(p,0) y NUMBER(p,s) a DECIMAL(p,s). Esta adaptación no implica equivalencia de toda la aritmética Snowflake.",
+        "en": "NUMBER becomes DECIMAL(38,0); NUMBER(p) becomes DECIMAL(p,0), and NUMBER(p,s) becomes DECIMAL(p,s). This adaptation does not imply full Snowflake arithmetic equivalence."
+      },
+      "source": "pkg/query/number_declarations.go"
+    },
+    {
+      "id": "types",
+      "name": "Tipos de datos / Data types",
+      "category": "types",
+      "description": {
+        "es": "Referencia los tipos del motor y las adaptaciones del emulador.",
+        "en": "References engine types and emulator adaptations."
+      },
+      "syntax": "INTEGER | DOUBLE | VARCHAR | BOOLEAN | DATE | TIME | TIMESTAMP | JSON | BLOB",
+      "example": "SELECT CAST(42 AS INTEGER), CAST('2026-01-01' AS DATE);",
+      "limitations": {
+        "es": "El mapa de tipos del protocolo no equivale a aceptar todas las declaraciones Snowflake. VARIANT/OBJECT/ARRAY se aproximan con JSON en partes del proyecto; comprobar cada contexto. Sin semántica geoespacial Snowflake completa.",
+        "en": "Protocol type mapping does not mean every Snowflake type declaration is accepted. Parts of the project approximate VARIANT/OBJECT/ARRAY with JSON; verify each context. No full Snowflake geospatial semantics."
+      },
+      "source": "pkg/query/type_mapper.go"
+    }
+  ],
+  "source_revision": "58506c13b6535b1780c544f68bdb5726eb5407a7",
+  "verified_query_examples": [
+    "select",
+    "with",
+    "values",
+    "join",
+    "where",
+    "group-by",
+    "qualify",
+    "order-limit",
+    "set-operators"
+  ]
+}

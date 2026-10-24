@@ -9,7 +9,10 @@
   },
   "scripts": {
     "check": "node verify.mjs",
-    "test": "node verify.mjs",
+    "test": "node verify.mjs && node --test test/*.test.mjs",
     "preview": "node scripts/preview.mjs"
+  },
+  "devDependencies": {
+    "linkedom": "^0.18.12"
   }
 }

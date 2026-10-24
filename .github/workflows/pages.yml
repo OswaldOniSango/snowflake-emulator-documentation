@@ -24,7 +24,9 @@ jobs:
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version-file: .nvmrc
-      - name: Validate catalog, function pages and static assets
+      - name: Install test dependencies
+        run: npm ci
+      - name: Validate languages, SQL reference, catalog and static assets
         run: npm test
 
   deploy:
